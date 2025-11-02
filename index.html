@@ -2,9 +2,9 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <title>AR.js Marker Demo</title>
+  <title>Markerless Fake AR - 3D Model</title>
   <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/gh/AR-js-org/AR.js/aframe/build/aframe-ar.js"></script>
+  <script src="https://cdn.jsdelivr.net/gh/donmccurdy/aframe-extras@6.1.1/dist/aframe-extras.min.js"></script>
   <style>
     body { margin:0; overflow:hidden; }
     #ui {
@@ -16,56 +16,89 @@
 <body>
 
 <div id="ui">
-  <button id="fixBtn">Fijar obra</button>
+  <button id="fixBtn">Fijar objeto</button>
   <button id="zoomInBtn">+</button>
   <button id="zoomOutBtn">−</button>
+  <button id="rotateLeftBtn">⟲</button>
+  <button id="rotateRightBtn">⟳</button>
 </div>
 
-<a-scene embedded arjs="trackingMethod: best; sourceType: webcam;" vr-mode-ui="false">
-  
-  <!-- Marcador Hiro -->
-  <a-marker preset="hiro">
-    <!-- Luz -->
-    <a-entity light="type: ambient; intensity: 0.8"></a-entity>
-    <a-entity light="type: directional; intensity: 0.6" position="0 4 2"></a-entity>
+<video id="cameraVideo" autoplay playsinline style="display:none;"></video>
 
-    <!-- Sombra -->
-    <a-plane id="shadow" position="0 0 0" rotation="-90 0 0" width="1.2" height="1.2" color="#000000" opacity="0.2"></a-plane>
+<a-scene embedded vr-mode-ui="false" renderer="logarithmicDepthBuffer:true;">
+  <!-- Cámara A-Frame -->
+  <a-entity camera look-controls position="0 1.6 0"></a-entity>
 
-    <!-- Obra -->
-    <a-plane id="obra" src="obra1.jpg" width="1" height="1" position="0 0.5 0"></a-plane>
-  </a-marker>
+  <!-- Luz -->
+  <a-entity light="type: ambient; intensity: 0.8"></a-entity>
+  <a-entity light="type: directional; intensity: 0.6" position="0 4 2"></a-entity>
 
-  <a-entity camera></a-entity>
+  <!-- Fondo: cámara real -->
+  <a-plane id="background" position="0 1.6 -5" width="10" height="10" material="shader: flat; src: #cameraVideo;"></a-plane>
+
+  <!-- Sombra -->
+  <a-plane id="shadow" position="0 0 -2" rotation="-90 0 0" width="1.2" height="1.2" color="#000" opacity="0.2"></a-plane>
+
+  <!-- Modelo 3D -->
+  <a-entity id="model" gltf-model="url(modelo.glb)" scale="1 1 1" position="0 1.5 -2" rotation="0 0 0"></a-entity>
 </a-scene>
 
 <script>
-const obra = document.querySelector('#obra');
+const video = document.querySelector('#cameraVideo');
+const model = document.querySelector('#model');
 const shadow = document.querySelector('#shadow');
+const cameraEntity = document.querySelector('[camera]');
 
 let fixed = false;
 let scale = 1;
+let rotationY = 0;
 
-// Botón fijar obra
+// Pedir cámara
+navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" }, audio: false })
+  .then(stream => { video.srcObject = stream; })
+  .catch(err => { alert("No se pudo acceder a la cámara: " + err); });
+
+// Botón fijar
 document.querySelector('#fixBtn').addEventListener('click', () => {
   fixed = !fixed;
-  document.querySelector('#fixBtn').innerText = fixed ? 'Obra fijada' : 'Fijar obra';
+  document.querySelector('#fixBtn').innerText = fixed ? 'Objeto fijado' : 'Fijar objeto';
 });
 
 // Zoom
 document.querySelector('#zoomInBtn').addEventListener('click', () => {
   scale += 0.1;
-  obra.setAttribute('width', scale);
-  obra.setAttribute('height', scale);
+  model.setAttribute('scale', `${scale} ${scale} ${scale}`);
   shadow.setAttribute('width', scale * 1.2);
   shadow.setAttribute('height', scale * 1.2);
 });
 document.querySelector('#zoomOutBtn').addEventListener('click', () => {
-  scale = Math.max(0.2, scale - 0.1);
-  obra.setAttribute('width', scale);
-  obra.setAttribute('height', scale);
+  scale = Math.max(0.1, scale - 0.1);
+  model.setAttribute('scale', `${scale} ${scale} ${scale}`);
   shadow.setAttribute('width', scale * 1.2);
   shadow.setAttribute('height', scale * 1.2);
+});
+
+// Rotación
+document.querySelector('#rotateLeftBtn').addEventListener('click', () => {
+  rotationY -= 15;
+  model.setAttribute('rotation', `0 ${rotationY} 0`);
+});
+document.querySelector('#rotateRightBtn').addEventListener('click', () => {
+  rotationY += 15;
+  model.setAttribute('rotation', `0 ${rotationY} 0`);
+});
+
+// Movimiento relativo para efecto AR fake
+document.querySelector('a-scene').addEventListener('loaded', () => {
+  const updatePosition = () => {
+    if(!fixed){
+      const camPos = cameraEntity.object3D.position;
+      model.object3D.position.set(camPos.x, 1.5, camPos.z - 2);
+      shadow.object3D.position.set(camPos.x, 0, camPos.z - 2);
+    }
+    requestAnimationFrame(updatePosition);
+  };
+  updatePosition();
 });
 </script>
 
