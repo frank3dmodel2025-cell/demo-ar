@@ -2,15 +2,19 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>3D Model Viewer Carrusel</title>
+<title>3D AR Demo - 2 modelos</title>
 <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
 <style>
-  body { margin:0; overflow:hidden; }
-  #ui {
-    position: absolute; bottom:10px; left:50%; transform:translateX(-50%);
-    z-index:100; display:flex; gap:10px; background: rgba(0,0,0,0.4); padding:5px; border-radius:10px;
-  }
-  button { padding:10px; font-size:16px; border:none; border-radius:5px; color:white; background-color: rgba(0,0,0,0.6); }
+body { margin:0; overflow:hidden; touch-action: none; }
+#carrusel {
+  position: absolute; bottom:10px; left:0; right:0; z-index:100;
+  display:flex; justify-content:center; gap:10px; padding:5px;
+  background: rgba(0,0,0,0.4); border-radius:10px;
+}
+#carrusel img {
+  width:60px; height:60px; object-fit: cover; border:2px solid white;
+  border-radius:5px; cursor:pointer;
+}
 </style>
 </head>
 <body>
@@ -24,58 +28,71 @@
   <a-entity camera look-controls></a-entity>
 </a-scene>
 
-<div id="ui">
-  <button class="modelBtn" data-model="modelo1.glb">Modelo 1</button>
-  <button class="modelBtn" data-model="modelo2.glb">Modelo 2</button>
-  <button class="modelBtn" data-model="modelo3.glb">Modelo 3</button>
-  <button id="zoomInBtn">Zoom +</button>
-  <button id="zoomOutBtn">Zoom −</button>
-  <button id="rotateLeftBtn">⟲</button>
-  <button id="rotateRightBtn">⟳</button>
+<div id="carrusel">
+  <img src="thumb1.png" data-model="modelo1.glb">
+  <img src="thumb2.png" data-model="modelo2.glb">
 </div>
 
 <script>
 const video = document.querySelector('#cameraVideo');
 const model = document.querySelector('#model');
 
-let scale = 0.5;
-let rotationY = 0;
-
 // Cámara
 navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" }, audio: false })
   .then(stream => { video.srcObject = stream; })
   .catch(err => { alert("No se pudo acceder a la cámara: " + err); });
 
-// Cambiar modelo
-document.querySelectorAll('.modelBtn').forEach(btn => {
-  btn.addEventListener('click', () => {
-    const archivo = btn.getAttribute('data-model');
+// Cambiar modelo al tocar miniatura
+document.querySelectorAll('#carrusel img').forEach(img => {
+  img.addEventListener('click', () => {
+    const archivo = img.getAttribute('data-model');
     model.setAttribute('gltf-model', `url(${archivo})`);
-    scale = 0.5;
-    rotationY = 0;
-    model.setAttribute('scale', `${scale} ${scale} ${scale}`);
-    model.setAttribute('rotation', `0 ${rotationY} 0`);
+    model.setAttribute('scale','0.5 0.5 0.5');
+    model.setAttribute('rotation','0 0 0');
   });
 });
 
-// Zoom
-document.querySelector('#zoomInBtn').addEventListener('click', () => {
-  scale += 0.1;
-  model.setAttribute('scale', `${scale} ${scale} ${scale}`);
-});
-document.querySelector('#zoomOutBtn').addEventListener('click', () => {
-  scale = Math.max(0.1, scale - 0.1);
-  model.setAttribute('scale', `${scale} ${scale} ${scale}`);
+// Variables de interacción táctil
+let initialDistance = null;
+let initialScale = 0.5;
+let previousX = null;
+let rotationY = 0;
+
+const sceneEl = document.querySelector('a-scene');
+
+// Gestos táctiles
+sceneEl.addEventListener('touchstart', (e)=>{
+  if(e.touches.length === 2){
+    initialDistance = Math.hypot(
+      e.touches[0].clientX - e.touches[1].clientX,
+      e.touches[0].clientY - e.touches[1].clientY
+    );
+    initialScale = parseFloat(model.getAttribute('scale').x);
+  } else if(e.touches.length ===1){
+    previousX = e.touches[0].clientX;
+  }
 });
 
-// Rotación
-document.querySelector('#rotateLeftBtn').addEventListener('click', () => {
-  rotationY -= 15;
-  model.setAttribute('rotation', `0 ${rotationY} 0`);
+sceneEl.addEventListener('touchmove', (e)=>{
+  if(e.touches.length === 2 && initialDistance){
+    const newDistance = Math.hypot(
+      e.touches[0].clientX - e.touches[1].clientX,
+      e.touches[0].clientY - e.touches[1].clientY
+    );
+    let newScale = initialScale * (newDistance / initialDistance);
+    newScale = Math.min(Math.max(newScale,0.1),5);
+    model.setAttribute('scale', `${newScale} ${newScale} ${newScale}`);
+  } else if(e.touches.length ===1 && previousX!==null){
+    const deltaX = e.touches[0].clientX - previousX;
+    rotationY += deltaX * 0.5;
+    model.setAttribute('rotation', `0 ${rotationY} 0`);
+    previousX = e.touches[0].clientX;
+  }
 });
-document.querySelector('#rotateRightBtn').addEventListener('click', () => {
-  rotationY += 15;
-  model.setAttribute('rotation', `0 ${rotationY} 0`);
+
+sceneEl.addEventListener('touchend', (e)=>{
+  if(e.touches.length<2) initialDistance = null;
+  if(e.touches.length<1) previousX = null;
 });
 </script>
 
