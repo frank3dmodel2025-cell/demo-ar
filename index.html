@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>AR Fake - Obra Flotante</title>
+  <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
+  <style>
+    body { margin:0; overflow:hidden; }
+    #ui {
+      position: absolute; top:10px; left:10px; z-index:100; display:flex; flex-direction: column; gap:5px;
+    }
+    button { padding:10px; font-size:16px; border-radius:5px; border:none; background-color: rgba(0,0,0,0.6); color:white; }
+    video { display:none; }
+  </style>
+</head>
+<body>
+
+<div id="ui">
+  <button id="fixBtn">Fijar obra</button>
+  <button id="zoomInBtn">+</button>
+  <button id="zoomOutBtn">−</button>
+</div>
+
+<!-- Video de cámara -->
+<video id="cameraVideo" autoplay playsinline></video>
+
+<a-scene embedded vr-mode-ui="false" renderer="logarithmicDepthBuffer:true;">
+  <!-- Cámara A-Frame -->
+  <a-entity camera look-controls position="0 1.6 0"></a-entity>
+
+  <!-- Luz -->
+  <a-entity light="type: ambient; intensity: 0.8"></a-entity>
+  <a-entity light="type: directional; intensity: 0.6" position="0 4 2"></a-entity>
+
+  <!-- Fondo: cámara en textura -->
+  <a-plane id="background" position="0 1.6 -5" width="10" height="10" material="shader: flat; src: #cameraVideo;"></a-plane>
+
+  <!-- Sombra -->
+  <a-plane id="shadow" position="0 0 -2" rotation="-90 0 0" width="1.2" height="1.2" color="#000" opacity="0.2"></a-plane>
+
+  <!-- Obra flotante -->
+  <a-plane id="obra" src="obra1.jpg" width="1" height="1" position="0 1.5 -2"></a-plane>
+</a-scene>
+
+<script>
+const video = document.querySelector('#cameraVideo');
+const obra = document.querySelector('#obra');
+const shadow = document.querySelector('#shadow');
+const cameraEntity = document.querySelector('[camera]');
+
+let fixed = false;
+let scale = 1;
+
+// Pedir cámara
+navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" }, audio: false })
+  .then(stream => { video.srcObject = stream; })
+  .catch(err => { alert("No se pudo acceder a la cámara: " + err); });
+
+// Fijar obra
+document.querySelector('#fixBtn').addEventListener('click', () => {
+  fixed = !fixed;
+  document.querySelector('#fixBtn').innerText = fixed ? 'Obra fijada' : 'Fijar obra';
+});
+
+// Zoom
+document.querySelector('#zoomInBtn').addEventListener('click', () => {
+  scale += 0.1;
+  obra.setAttribute('width', scale);
+  obra.setAttribute('height', scale);
+  shadow.setAttribute('width', scale * 1.2);
+  shadow.setAttribute('height', scale * 1.2);
+});
+document.querySelector('#zoomOutBtn').addEventListener('click', () => {
+  scale = Math.max(0.2, scale - 0.1);
+  obra.setAttribute('width', scale);
+  obra.setAttribute('height', scale);
+  shadow.setAttribute('width', scale * 1.2);
+  shadow.setAttribute('height', scale * 1.2);
+});
+
+// Movimiento relativo para efecto AR
+document.querySelector('a-scene').addEventListener('loaded', () => {
+  const updatePosition = () => {
+    if(!fixed){
+      const camPos = cameraEntity.object3D.position;
+      obra.object3D.position.set(camPos.x, 1.5, camPos.z - 2);
+      shadow.object3D.position.set(camPos.x, 0, camPos.z - 2);
+    }
+    requestAnimationFrame(updatePosition);
+  };
+  updatePosition();
+});
+</script>
+
+</body>
+</html>
