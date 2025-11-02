@@ -2,70 +2,24 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <title>AR.js Marker 3D Model</title>
+  <title>WebXR Markerless AR</title>
   <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/gh/AR-js-org/AR.js/aframe/build/aframe-ar.js"></script>
-  <style>
-    body { margin:0; overflow:hidden; }
-    #ui {
-      position: absolute; top:10px; left:10px; z-index:100; display:flex; flex-direction: column; gap:5px;
-    }
-    button { padding:10px; font-size:16px; border-radius:5px; border:none; background-color: rgba(0,0,0,0.6); color:white; }
-  </style>
+  <script src="https://cdn.jsdelivr.net/gh/AR-js-org/aframe-ar.js@3.3.2/aframe-ar.js"></script>
 </head>
-<body>
+<body style="margin:0; overflow:hidden;">
 
-<div id="ui">
-  <button id="fixBtn">Fijar objeto</button>
-  <button id="zoomInBtn">+</button>
-  <button id="zoomOutBtn">−</button>
-  <button id="rotateLeftBtn">⟲</button>
-  <button id="rotateRightBtn">⟳</button>
-</div>
-
-<a-scene embedded arjs="trackingMethod: best; sourceType: webcam;" vr-mode-ui="false">
-  <!-- Marcador Hiro -->
-  <a-marker preset="hiro">
-    <a-entity light="type: ambient; intensity:0.8"></a-entity>
-    <a-entity light="type: directional; intensity:0.6" position="0 4 2"></a-entity>
-    <a-entity id="model" gltf-model="url(modelo.glb)" scale="1 1 1" position="0 0 0" rotation="0 0 0"></a-entity>
-    <a-plane id="shadow" position="0 -0.01 0" rotation="-90 0 0" width="1.2" height="1.2" color="#000" opacity="0.2"></a-plane>
-  </a-marker>
-  <a-entity camera></a-entity>
+<a-scene
+  xrweb="referenceSpaceType: local-floor"
+  webxr="optionalFeatures: hit-test, dom-overlay"
+  embedded
+  arjs="sourceType: webcam;"
+  renderer="logarithmicDepthBuffer:true"
+>
+  <a-entity camera look-controls></a-entity>
+  <a-entity gltf-model="url(modelo.glb)" id="model" position="0 0 -1" scale="0.5 0.5 0.5"></a-entity>
+  <a-light type="ambient" intensity="0.8"></a-light>
+  <a-light type="directional" intensity="0.6" position="0 4 2"></a-light>
 </a-scene>
 
-<script>
-const model = document.querySelector('#model');
-const shadow = document.querySelector('#shadow');
-let fixed = false;
-let scale = 1;
-let rotationY = 0;
-
-// Fijar objeto
-document.querySelector('#fixBtn').addEventListener('click', () => {
-  fixed = !fixed;
-  document.querySelector('#fixBtn').innerText = fixed ? 'Objeto fijado' : 'Fijar objeto';
-});
-
-// Zoom
-document.querySelector('#zoomInBtn').addEventListener('click', () => {
-  scale += 0.1;
-  model.setAttribute('scale', `${scale} ${scale} ${scale}`);
-  shadow.setAttribute('width', scale*1.2);
-  shadow.setAttribute('height', scale*1.2);
-});
-document.querySelector('#zoomOutBtn').addEventListener('click', () => {
-  scale = Math.max(0.1, scale-0.1);
-  model.setAttribute('scale', `${scale} ${scale} ${scale}`);
-  shadow.setAttribute('width', scale*1.2);
-  shadow.setAttribute('height', scale*1.2);
-});
-
-// Rotación
-document.querySelector('#rotateLeftBtn').addEventListener('click', () => {
-  rotationY -= 15;
-  model.setAttribute('rotation', `0 ${rotationY} 0`);
-});
-document.querySelector('#rotateRightBtn').addEventListener('click', () => {
-  rotationY += 15;
-  model.setAttribute('rotation', `0 ${
+</body>
+</html>
